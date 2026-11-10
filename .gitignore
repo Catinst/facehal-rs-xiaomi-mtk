@@ -22,3 +22,12 @@ standalone-build/target/
 .env.*
 *.pem
 *.keystore
+
+# Device-dependent inputs and local diagnostics
+/runtime/
+*.log
+*.zip
+*.i64
+*.idb
+__pycache__/
+*.pyc

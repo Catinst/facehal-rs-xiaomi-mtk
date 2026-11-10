@@ -2,6 +2,9 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    for variable in ["FACEHAL_ROOT", "ANDROID_SYSTEM_LIB64", "ANDROID_VENDOR_LIB64"] {
+        println!("cargo::rerun-if-env-changed={variable}");
+    }
     let root = PathBuf::from(env::var("FACEHAL_ROOT").expect("FACEHAL_ROOT is required"));
     let native = root.join("standalone-build/native");
     let system_lib64 = env::var("ANDROID_SYSTEM_LIB64")

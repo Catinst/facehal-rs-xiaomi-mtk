@@ -44,7 +44,10 @@ fn main() {
         _ if target.ends_with("-android") => panic!("unsupported Android target for Binder: {target}"),
         _ => "",
     };
+    println!("cargo::rerun-if-changed=binder_ndk_compat.c");
     let mut bindings = bindgen::Builder::default()
+        .clang_arg("-xc++")
+        .clang_arg("-std=c++17")
         .clang_arg(format!("--sysroot={}", sysroot.display()))
         .clang_arg("-D__ANDROID_VENDOR__")
         .clang_arg(format!("-I{platform_headers}"))

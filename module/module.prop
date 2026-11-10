@@ -1,0 +1,6 @@
+id=facehal_xiaomi_mtk
+name=Xiaomi MTK FaceHAL Compatibility
+version=0.1.0
+versionCode=1
+author=YG / based on LazyBonesLZY
+description=Private-library FaceHAL module with real VirtualHal bridge, GPU owner thread, standard progress and configurable preview mirror. K50 ColorOS17 verified; other MTK devices require validation.

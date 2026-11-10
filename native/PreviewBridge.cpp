@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 
 namespace {
 
@@ -73,15 +75,30 @@ bool writeBuffer(
     } else {
         return false;
     }
+    int64_t scaledWidth = buffer.width;
+    int64_t scaledHeight = buffer.height;
+    if (static_cast<int64_t>(buffer.width) * outputHeight >=
+        static_cast<int64_t>(buffer.height) * outputWidth) {
+        scaledHeight = static_cast<int64_t>(buffer.width) * outputHeight / outputWidth;
+    } else {
+        scaledWidth = static_cast<int64_t>(buffer.height) * outputWidth / outputHeight;
+    }
+    const int64_t cropX = (scaledWidth - buffer.width) / 2;
+    const int64_t cropY = (scaledHeight - buffer.height) / 2;
+    const char* mirrorValue = std::getenv("FACEHAL_PREVIEW_MIRROR");
+    const bool mirror = mirrorValue != nullptr && std::strcmp(mirrorValue, "1") == 0;
     auto* destination = static_cast<uint8_t*>(buffer.bits);
     for (int32_t y = 0; y < buffer.height; ++y) {
-        const int32_t outputY = y * outputHeight / buffer.height;
+        const int32_t outputY = static_cast<int32_t>(std::min<int64_t>(
+                outputHeight - 1, (y + cropY) * outputHeight / scaledHeight));
         auto* row = destination + static_cast<size_t>(y) * buffer.stride * bytesPerPixel;
         for (int32_t x = 0; x < buffer.width; ++x) {
-            const int32_t outputX = x * outputWidth / buffer.width;
+            const int32_t outputX = static_cast<int32_t>(std::min<int64_t>(
+                    outputWidth - 1, (x + cropX) * outputWidth / scaledWidth));
             int32_t sourceX = 0;
             int32_t sourceY = 0;
-            mapSourcePixel(outputX, outputY, width, height, orientation, &sourceX, &sourceY);
+            const int32_t displayX = mirror ? outputWidth - 1 - outputX : outputX;
+            mapSourcePixel(displayX, outputY, width, height, orientation, &sourceX, &sourceY);
             if (sourceX < 0 || sourceX >= width || sourceY < 0 || sourceY >= height) {
                 return false;
             }
@@ -125,11 +142,20 @@ extern "C" int32_t facehal_preview_render_nv21(
     // Reconfiguring a SurfaceView buffer queue for every frame can freeze previews on
     // older vendor graphics stacks. Configure it once, then only lock/post new buffers.
     if (configureWindow != 0) {
-        status = ANativeWindow_setBuffersGeometry(
-                nativeWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGBA_8888);
-        if (status != 0) {
-            status = ANativeWindow_setBuffersGeometry(nativeWindow, 0, 0, WINDOW_FORMAT_RGBA_8888);
+        status = ANativeWindow_setBuffersGeometry(nativeWindow, 0, 0, WINDOW_FORMAT_RGBA_8888);
+        int32_t viewWidth = ANativeWindow_getWidth(nativeWindow);
+        int32_t viewHeight = ANativeWindow_getHeight(nativeWindow);
+        if (status != 0 || viewWidth <= 0 || viewHeight <= 0) {
+            viewWidth = bufferWidth;
+            viewHeight = bufferHeight;
         }
+        const int32_t longest = std::max(viewWidth, viewHeight);
+        if (longest > 640) {
+            viewWidth = std::max<int32_t>(1, static_cast<int64_t>(viewWidth) * 640 / longest);
+            viewHeight = std::max<int32_t>(1, static_cast<int64_t>(viewHeight) * 640 / longest);
+        }
+        status = ANativeWindow_setBuffersGeometry(
+                nativeWindow, viewWidth, viewHeight, WINDOW_FORMAT_RGBA_8888);
         if (status != 0) {
             return status < 0 ? status : kWindowError;
         }

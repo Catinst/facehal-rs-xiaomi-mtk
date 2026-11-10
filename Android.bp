@@ -14,9 +14,11 @@ cc_library_static {
         "native/CameraBridge.cpp",
         "native/PreviewBridge.cpp",
         "native/SenseTimeBridge.cpp",
+        "native/AlgorithmThreadBridge.cpp",
     ],
     local_include_dirs: ["native"],
     cpp_std: "c++17",
+    cppflags: ["-fexceptions"],
     vendor: true,
     cflags: [
         "-DFACEHAL_VENDOR_CAMERA_NDK=1",
@@ -79,4 +81,14 @@ rust_binary {
     static_libs: ["libfacehal_camera_bridge"],
     lints: "android",
     flags: ["-Dunsafe_op_in_unsafe_fn"],
+}
+
+cc_binary {
+    name: "facehal-virtual-bridge",
+    srcs: ["native/FaceVirtualBridge.c"],
+    system_ext_specific: true,
+    relative_install_path: "hw",
+    stl: "none",
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+    shared_libs: ["libbinder_ndk", "liblog", "libdl"],
 }

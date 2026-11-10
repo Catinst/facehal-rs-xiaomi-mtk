@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+// Keep the backend implementation distinct from the thread-affine public wrappers.
+#pragma once
+#define facehal_algorithm_open facehal_algorithm_open_impl
+#define facehal_algorithm_close facehal_algorithm_close_impl
+#define facehal_algorithm_process_nv21 facehal_algorithm_process_nv21_impl
+#define facehal_algorithm_current_face_id facehal_algorithm_current_face_id_impl
+#define facehal_algorithm_enumerate facehal_algorithm_enumerate_impl
+#define facehal_algorithm_slots facehal_algorithm_slots_impl
+#define facehal_algorithm_remove facehal_algorithm_remove_impl
+#define facehal_algorithm_remove_all facehal_algorithm_remove_all_impl
+#define facehal_algorithm_set_active_slot facehal_algorithm_set_active_slot_impl
+#define facehal_algorithm_reset facehal_algorithm_reset_impl
+#define facehal_algorithm_set_orientation facehal_algorithm_set_orientation_impl

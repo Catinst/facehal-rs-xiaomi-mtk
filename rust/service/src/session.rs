@@ -42,12 +42,10 @@ const AUTHENTICATION_TIMEOUT: Duration = Duration::from_secs(10);
 const ENROLLMENT_TIMEOUT: Duration = Duration::from_secs(60);
 // The proprietary backend may create a template on its first successful enrollment frame.
 // Do not report completion until several subsequent live frames authenticate that candidate.
-// MIUI's enrollment UI advances its ring by five points per callback and ignores a new
-// callback while the previous animation is still running. Twenty paced samples provide
-// the expected 0..100 visual progression instead of completing while the ring stays at 5.
+// Enrollment is reported only after the candidate passes four further live matches.
+// Standard remaining counts establish the UI's progress range before terminal zero.
 const ENROLLMENT_CONFIRMATION_SAMPLES: i32 = 4;
-// MIUI Settings uses vendor acquired code 19 to advance each of its five ring stages.
-// The candidate frame plus four live confirmation frames produce those five stages.
+// Keep the existing confirmation cadence; this patch changes notifications only.
 const ENROLLMENT_SAMPLE_INTERVAL: Duration = Duration::from_millis(650);
 // MIUI restarts its ring animation for every acquired/help callback. Forward bad-frame
 // guidance at most once per second and never send a GOOD/help frame beside progress.
@@ -472,7 +470,7 @@ impl FaceSession {
                             }
                             candidate = Some((enrollment_id, slot));
                             progress_remaining -= 1;
-                            send_miui_enrollment_step(&callback);
+                            send_standard_enrollment_step(&callback, enrollment_id, progress_remaining);
                             next_confirmation_at = Instant::now() + ENROLLMENT_SAMPLE_INTERVAL;
                             eprintln!("FaceHAL enroll: candidate id={enrollment_id} slot={slot}; starting live confirmation");
                         }
@@ -484,9 +482,10 @@ impl FaceSession {
                     if let Some((enrollment_id, slot)) = candidate {
                         if status == STATUS_OK || status == STATUS_UNLOCK_OK {
                             progress_remaining -= 1;
-                            // MIUI's private enrollment UI advances only on vendor acquired code
-                            // 19. Standard AIDL progress is reserved for the terminal result.
-                            send_miui_enrollment_step(&callback);
+                            // ColorOS consumes standard remaining counts; terminal zero is sent after commit.
+                            if progress_remaining > 0 {
+                                send_standard_enrollment_step(&callback, enrollment_id, progress_remaining);
+                            }
                             eprintln!("FaceHAL enroll: confirmed id={enrollment_id} slot={slot} remaining={progress_remaining}");
                             if progress_remaining == 0 {
                                 if authenticator_id.rotate(true).is_err() {
@@ -503,7 +502,7 @@ impl FaceSession {
                                     drop(preview);
                                     drop(_guard);
                                     eprintln!("FaceHAL enroll: completed id={enrollment_id} frames={frame_count} after live confirmation");
-                                    let _ = callback.onEnrollmentProgress(enrollment_id, 0);
+                                    send_standard_enrollment_step(&callback, enrollment_id, 0);
                                 } else {
                                     let _ = algorithm.remove(enrollment_id);
                                     let _ = authenticator_id.rotate(
@@ -1298,20 +1297,18 @@ fn send_authentication_frame(callback: &Strong<dyn ISessionCallback>, status: i3
     let _ = callback.onAuthenticationFrame(&frame);
 }
 
-fn send_miui_enrollment_step(callback: &Strong<dyn ISessionCallback>) {
-    // Framework exposes VENDOR code 19 to FaceManager as help id 1019. MIUI strips
-    // 1000 and uses value 19 to enter/advance its five-stage enrollment animation.
-    let frame = EnrollmentFrame {
-        cell: None,
-        stage: EnrollmentStage::HOLD_STILL_IN_CENTER,
-        data: BaseFrame {
-            acquiredInfo: AcquiredInfo::VENDOR,
-            vendorCode: 19,
-            isCancellable: true,
-            ..Default::default()
-        },
-    };
-    let _ = callback.onEnrollmentFrame(&frame);
+fn send_standard_enrollment_step(
+    callback: &Strong<dyn ISessionCallback>, enrollment_id: i32, remaining: i32,
+) {
+    if enrollment_id <= 0 || remaining < 0 {
+        eprintln!("FaceHAL enroll: invalid progress id={enrollment_id} remaining={remaining}");
+        return;
+    }
+    let result = callback.onEnrollmentProgress(enrollment_id, remaining);
+    eprintln!(
+        "FaceHAL enroll: standard progress id={enrollment_id} remaining={remaining} transport_ok={}",
+        result.is_ok(),
+    );
 }
 
 fn send_enrollment_frame(callback: &Strong<dyn ISessionCallback>, status: i32) {

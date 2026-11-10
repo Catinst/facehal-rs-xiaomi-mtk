@@ -2,7 +2,8 @@ service vendor.facehal /vendor/bin/hw/android.hardware.biometrics.face-service.f
     class late_start
     user system
     group system camera input graphics root
-    setenv LD_LIBRARY_PATH /vendor/lib64
+    setenv LD_LIBRARY_PATH /vendor/lib64/facehal:/vendor/lib64
+    setenv FACEHAL_PREVIEW_MIRROR 1
     disabled
 
 on post-fs-data

@@ -37,7 +37,15 @@ pub fn add_service(identifier: &str, mut binder: SpIBinder) -> Result<()> {
     // `AServiceManager_addService` creates a new strong reference and copies
     // the string, so both pointers need only be valid until the call returns.
         unsafe { sys::AServiceManager_addService(binder.as_native_mut(), instance.as_ptr()) };
-    status_result(status)
+    // Registration returns binder_exception_t rather than a low-level errno.
+    // Map it deliberately while retaining the public StatusCode result type.
+    match status {
+        0 => Ok(()),
+        -1 => Err(StatusCode::PERMISSION_DENIED),
+        -2 | -3 | -4 => Err(StatusCode::BAD_VALUE),
+        -5 | -6 | -7 => Err(StatusCode::INVALID_OPERATION),
+        _ => Err(StatusCode::UNKNOWN_ERROR),
+    }
 }
 
 /// Register a dynamic service via the LazyServiceRegistrar.

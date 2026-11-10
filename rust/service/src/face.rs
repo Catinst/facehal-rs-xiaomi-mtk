@@ -46,8 +46,9 @@ impl IFace for FaceService {
         props.sensorType = FaceSensorType::RGB;
         props.halControlsPreview = true;
         props.previewDisplayId = 0;
-        props.enrollPreviewWidth = 640;
-        props.enrollPreviewHeight = 480;
+        // K50 front frames are 640x480 with sensor orientation 270 degrees.
+        props.enrollPreviewWidth = 480;
+        props.enrollPreviewHeight = 640;
         props.enrollPreviewScale = 1.0;
         props.supportsDetectInteraction = false;
         Ok(vec![props])

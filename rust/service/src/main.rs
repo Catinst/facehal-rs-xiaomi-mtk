@@ -18,10 +18,11 @@ fn main() {
     }
 
     ProcessState::set_thread_pool_max_thread_count(4);
-
     let service = BnFace::new_binder(FaceService::new(), BinderFeatures::default());
-    add_service(INSTANCE, service.as_binder()).expect("failed to register Face HAL");
-
-    log::info!("registered {INSTANCE}");
+    if let Err(error) = add_service(INSTANCE, service.as_binder()) {
+        eprintln!("FaceHAL registration failed: {error:?}; see the raw exception above");
+        std::process::exit(1);
+    }
+    eprintln!("FaceHAL registered {INSTANCE}");
     ProcessState::join_thread_pool();
 }

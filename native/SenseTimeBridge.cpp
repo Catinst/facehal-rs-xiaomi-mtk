@@ -1,3 +1,4 @@
+#include "AlgorithmDispatchAliases.h"
 #include "SenseTimeBridge.h"
 
 #include <android/log.h>
