@@ -26,7 +26,7 @@ pub struct Preview {
 impl Preview {
     pub fn new(surface: Option<Surface>) -> Self {
         if surface.is_some() {
-            eprintln!("FaceHAL preview: enrollment surface received");
+            facehal_trace!("FaceHAL preview: enrollment surface received");
         } else {
             eprintln!("FaceHAL preview: enrollment surface missing");
         }

@@ -55,7 +55,6 @@ status() {
 
 probe() {
     load_identity || { status; return 1; }
-    grep -q 'raw=0 .*exception=EX_NONE' "$LOGDIR/facehal.log" || return 1
     (unset LD_LIBRARY_PATH LD_PRELOAD; timeout 10 "$MODDIR/bin/binder_client") \
         > "$LOGDIR/probe.log" 2>&1
     result=$?
@@ -86,7 +85,7 @@ start() {
         3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&- </dev/null >> "$LOGDIR/supervisor.log" 2>&1 &
     count=0
     while [ "$count" -lt 10 ]; do
-        if load_identity && grep -q 'raw=0 .*exception=EX_NONE' "$LOGDIR/facehal.log"; then
+        if load_identity && (unset LD_LIBRARY_PATH LD_PRELOAD; timeout 2 "$MODDIR/bin/binder_client") > "$RUNDIR/readiness" 2>&1; then
             status
             return 0
         fi

@@ -1,3 +1,12 @@
+// Project routine diagnostics are compile-time opt-in; errors keep eprintln!.
+macro_rules! facehal_trace {
+    ($($arguments:tt)*) => {{
+        if matches!(option_env!("FACEHAL_VERBOSE_LOGS"), Some("1")) {
+            std::eprintln!($($arguments)*);
+        }
+    }};
+}
+
 mod algorithm;
 mod authenticator;
 mod camera;
@@ -23,6 +32,6 @@ fn main() {
         eprintln!("FaceHAL registration failed: {error:?}; see the raw exception above");
         std::process::exit(1);
     }
-    eprintln!("FaceHAL registered {INSTANCE}");
+    facehal_trace!("FaceHAL registered {INSTANCE}");
     ProcessState::join_thread_pool();
 }

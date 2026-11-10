@@ -48,7 +48,7 @@ pub fn run_worker_from_args() -> Option<i32> {
     }
     ProcessState::set_thread_pool_max_thread_count(2);
     ProcessState::start_thread_pool();
-    eprintln!("FaceHAL camera worker v2: Binder thread pool started");
+    facehal_trace!("FaceHAL camera worker v2: Binder thread pool started");
     Some(unsafe { facehal_camera_worker_main(width, height, socket_fd, frame_fd, window_mode) })
 }
 

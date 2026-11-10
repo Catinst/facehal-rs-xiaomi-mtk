@@ -1,3 +1,4 @@
+#include "FacehalLog.h"
 #include <android/binder_ibinder.h>
 #include <android/binder_parcel.h>
 #include <android/binder_status.h>
@@ -21,8 +22,8 @@ static binder_status_t transact(AIBinder *binder, transaction_code_t code,
                                const AParcel *in, AParcel *out) {
     (void)in;
     struct Bridge *bridge = AIBinder_getUserData(binder);
-    fprintf(stderr, "FaceVirtualBridge transaction=%u\n", code);
-    __android_log_print(ANDROID_LOG_INFO, "FaceVirtualBridge", "transaction=%u", code);
+    FACEHAL_TRACE("FaceVirtualBridge transaction=%u\n", code);
+    FACEHAL_ANDROID_TRACE(ANDROID_LOG_INFO, "FaceVirtualBridge", "transaction=%u", code);
     if (code != 23) {
         fprintf(stderr, "FaceVirtualBridge: unsupported control transaction=%u\n", code);
         return STATUS_UNKNOWN_TRANSACTION;
@@ -40,7 +41,7 @@ static binder_status_t transact(AIBinder *binder, transaction_code_t code,
     AStatus_delete(status);
     if (result == STATUS_OK) result = AParcel_writeStrongBinder(out, face);
     AIBinder_decStrong(face);
-    fprintf(stderr, "FaceVirtualBridge getFaceHal -> real IFace/default status=%d\n", result);
+    FACEHAL_TRACE("FaceVirtualBridge getFaceHal -> real IFace/default status=%d\n", result);
     return result;
 }
 
@@ -48,7 +49,7 @@ int main(void) {
     const char *target = "android.hardware.biometrics.face.IFace/default";
     const char *name = "android.hardware.biometrics.face.virtualhal.IVirtualHal/virtual";
     void *lib = dlopen("libbinder_ndk.so", RTLD_NOW | RTLD_LOCAL);
-    if (!lib) { fprintf(stderr, "binder dlopen: %s\n", dlerror()); return 2; }
+    if (!lib) { fprintf(stderr, "binder dlopen error: %s\n", dlerror()); return 2; }
     check_fn check = (check_fn)dlsym(lib, "AServiceManager_checkService");
     add_fn add = (add_fn)dlsym(lib, "AServiceManager_addService");
     pool_fn pool = (pool_fn)dlsym(lib, "ABinderProcess_setThreadPoolMaxThreadCount");
@@ -57,7 +58,7 @@ int main(void) {
     AIBinder *existing = check(name);
     if (existing) {
         AIBinder_decStrong(existing);
-        fprintf(stderr, "FaceVirtualBridge: existing virtual service left untouched\n");
+        FACEHAL_TRACE("FaceVirtualBridge: existing virtual service left untouched\n");
         return 4;
     }
     struct Bridge bridge = { .face = check(target), .check = check, .mutex = PTHREAD_MUTEX_INITIALIZER };
@@ -69,9 +70,10 @@ int main(void) {
     pool(4);
     // IVirtualHal is an unstable framework test interface; no fake stable version/hash.
     int32_t exception = add(binder, name);
-    fprintf(stderr, "FaceVirtualBridge addService raw=%d pid=%d exception=%s\n", exception, getpid(),
+    FACEHAL_TRACE("FaceVirtualBridge addService raw=%d pid=%d exception=%s\n", exception, getpid(),
             exception == 0 ? "EX_NONE" : "EX_ERROR");
     if (exception != 0) {
+        fprintf(stderr, "FaceVirtualBridge registration error raw=%d\n", exception);
         AIBinder_decStrong(binder);
         AIBinder_decStrong(bridge.face);
         return 7;

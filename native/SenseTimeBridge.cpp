@@ -1,3 +1,4 @@
+#include "FacehalLog.h"
 #include "AlgorithmDispatchAliases.h"
 #include "SenseTimeBridge.h"
 
@@ -151,10 +152,10 @@ void* openLibrary() {
     if (const char* overridePath = std::getenv("FACEHAL_ALGORITHM_LIBRARY");
         overridePath != nullptr && overridePath[0] != '\0') {
         if (void* library = dlopen(overridePath, RTLD_NOW | RTLD_LOCAL); library != nullptr) {
-            __android_log_print(ANDROID_LOG_INFO, kTag, "loaded test override %s", overridePath);
+            FACEHAL_ANDROID_TRACE(ANDROID_LOG_INFO, kTag, "loaded test override %s", overridePath);
             return library;
         }
-        __android_log_print(
+        FACEHAL_ANDROID_TRACE(
                 ANDROID_LOG_ERROR, kTag, "unable to load test override %s: %s", overridePath,
                 dlerror());
         return nullptr;
@@ -165,11 +166,11 @@ void* openLibrary() {
     };
     for (const char* candidate : candidates) {
         if (void* library = dlopen(candidate, RTLD_NOW | RTLD_LOCAL); library != nullptr) {
-            __android_log_print(ANDROID_LOG_INFO, kTag, "loaded %s", candidate);
+            FACEHAL_ANDROID_TRACE(ANDROID_LOG_INFO, kTag, "loaded %s", candidate);
             return library;
         }
     }
-    __android_log_print(ANDROID_LOG_ERROR, kTag, "unable to load algorithm: %s", dlerror());
+    FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "unable to load algorithm: %s", dlerror());
     return nullptr;
 }
 
@@ -244,7 +245,7 @@ extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* templateDirector
                 kTemplatePathCapacity) {
         return nullptr;
     }
-    std::fprintf(stderr, "FaceHAL algorithm: opening template directory %s\n", templateDirectory);
+    FACEHAL_TRACE("FaceHAL algorithm: opening template directory %s\n", templateDirectory);
     std::fflush(stderr);
 
     auto algorithm = std::make_unique<FacehalAlgorithm>();
@@ -290,14 +291,14 @@ extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* templateDirector
         algorithm->imageFormat == nullptr || algorithm->templateFile == nullptr ||
         algorithm->globalEngineSlot == nullptr || contextPath == nullptr ||
         templatePath == nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, kTag, "required algorithm symbol is missing: %s",
+        FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "required algorithm symbol is missing: %s",
                             dlerror());
         dlclose(algorithm->library);
         return nullptr;
     }
 
     if (*algorithm->globalEngineSlot != nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, kTag, "algorithm runtime is already active");
+        FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "algorithm runtime is already active");
         dlclose(algorithm->library);
         return nullptr;
     }
@@ -314,7 +315,7 @@ extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* templateDirector
     algorithm->templatePath = std::string(templateDirectory) + kTemplateFileSuffix;
     algorithm->backupPath = algorithm->templatePath + ".bak";
     if (!restoreOrProtectTemplate(algorithm.get())) {
-        __android_log_print(ANDROID_LOG_ERROR, kTag, "template file is corrupt and unrecoverable");
+        FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "template file is corrupt and unrecoverable");
         dlclose(algorithm->library);
         return nullptr;
     }
@@ -326,7 +327,7 @@ extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* templateDirector
             kTemplateFileSuffix);
     if (expectedLength < 0 || static_cast<size_t>(expectedLength) >= expectedTemplatePath.size() ||
         std::strcmp(templatePath, expectedTemplatePath.data()) != 0) {
-        __android_log_print(ANDROID_LOG_ERROR, kTag,
+        FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag,
                             "algorithm template path initialization failed");
         dlclose(algorithm->library);
         return nullptr;
@@ -348,12 +349,12 @@ extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* templateDirector
         std::fprintf(stderr, "FaceHAL algorithm: initialization failed status=%d engine=%p\n", status,
                      algorithm->engine);
         std::fflush(stderr);
-        __android_log_print(ANDROID_LOG_ERROR, kTag, "algorithm initialization failed: %d",
+        FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "algorithm initialization failed: %d",
                             status);
         if (createdHandle) {
             const int32_t uninitializeStatus = algorithm->uninitialize(algorithm->engine);
             const int32_t destroyStatus = algorithm->destroyHandle(algorithm->engine);
-            __android_log_print(ANDROID_LOG_WARN, kTag,
+            FACEHAL_ANDROID_TRACE(ANDROID_LOG_WARN, kTag,
                                 "cleanup after initialization failure: uninitialize=%d destroy=%d",
                                 uninitializeStatus, destroyStatus);
             *algorithm->globalEngineSlot = nullptr;
@@ -361,7 +362,7 @@ extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* templateDirector
         dlclose(algorithm->library);
         return nullptr;
     }
-    std::fprintf(stderr, "FaceHAL algorithm: initialization complete engine=%p\n", algorithm->engine);
+    FACEHAL_TRACE("FaceHAL algorithm: initialization complete engine=%p\n", algorithm->engine);
     std::fflush(stderr);
     return algorithm.release();
 }
@@ -375,7 +376,7 @@ extern "C" void facehal_algorithm_close(FacehalAlgorithm* algorithm) {
         const int32_t uninitializeStatus = algorithm->uninitialize(algorithm->engine);
         const int32_t destroyStatus = algorithm->destroyHandle(algorithm->engine);
         if (uninitializeStatus != 0 || destroyStatus != 0) {
-            __android_log_print(ANDROID_LOG_WARN, kTag,
+            FACEHAL_ANDROID_TRACE(ANDROID_LOG_WARN, kTag,
                                 "algorithm shutdown failed: uninitialize=%d destroy=%d",
                                 uninitializeStatus, destroyStatus);
         }
@@ -408,7 +409,7 @@ extern "C" int32_t facehal_algorithm_process_nv21(
     if (action == FACEHAL_ALGORITHM_ENROLL && (status == 0 || status == 0x65) &&
         !validateAndBackupTemplate(algorithm)) {
         if (!rollbackTemplate(algorithm)) {
-            __android_log_print(ANDROID_LOG_ERROR, kTag, "unable to roll back corrupt enrollment");
+            FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "unable to roll back corrupt enrollment");
         }
         return FACEHAL_ALGORITHM_ERROR_INITIALIZATION;
     }
@@ -473,7 +474,7 @@ extern "C" int32_t facehal_algorithm_remove(
     algorithm->deleteFace(enrollmentId);
     if (!validateAndBackupTemplate(algorithm)) {
         if (!rollbackTemplate(algorithm)) {
-            __android_log_print(ANDROID_LOG_ERROR, kTag, "unable to roll back corrupt removal");
+            FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "unable to roll back corrupt removal");
         }
         return FACEHAL_ALGORITHM_ERROR_INITIALIZATION;
     }
@@ -491,7 +492,7 @@ extern "C" int32_t facehal_algorithm_remove_all(FacehalAlgorithm* algorithm) {
     algorithm->deleteAllFaces();
     if (!validateAndBackupTemplate(algorithm)) {
         if (!rollbackTemplate(algorithm)) {
-            __android_log_print(ANDROID_LOG_ERROR, kTag,
+            FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag,
                                 "unable to roll back corrupt remove-all");
         }
         return FACEHAL_ALGORITHM_ERROR_INITIALIZATION;

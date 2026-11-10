@@ -28,6 +28,9 @@ fn android_api_level() -> u32 {
 }
 
 fn main() {
+    println!("cargo::rerun-if-env-changed=FACEHAL_VERBOSE_LOGS");
+    let verbose = env::var("FACEHAL_VERBOSE_LOGS").unwrap_or_else(|_| "0".into());
+    assert!(verbose == "0" || verbose == "1", "invalid FACEHAL_VERBOSE_LOGS");
     println!("cargo::rerun-if-env-changed=FACEHAL_ANDROID_API");
     println!("cargo::rerun-if-env-changed=BINDER_NDK_LIB_DIR");
     println!("cargo::rerun-if-env-changed=BINDER_PLATFORM_HEADERS");
@@ -104,6 +107,7 @@ fn main() {
         let archive = out_path.join("libbinder_ndk_compat.a");
         let compile = Command::new(&clang)
             .arg("-fPIC")
+            .arg(format!("-DFACEHAL_VERBOSE_LOGS={verbose}"))
             .arg("-fno-stack-protector")
             .arg(format!("-D__ANDROID_MIN_SDK_VERSION__={api}"))
             .arg("-c")

@@ -1,3 +1,4 @@
+#include "FacehalLog.h"
 #define facehal_algorithm_open facehal_algorithm_open_impl
 #define facehal_algorithm_close facehal_algorithm_close_impl
 #define facehal_algorithm_process_nv21 facehal_algorithm_process_nv21_impl
@@ -59,7 +60,7 @@ class AlgorithmOwner {
     }
  private:
     void run() {
-        std::fprintf(stderr, "FaceHAL algorithm owner tid=%ld\n", syscall(SYS_gettid));
+        FACEHAL_TRACE("FaceHAL algorithm owner tid=%ld\n", syscall(SYS_gettid));
         for (;;) {
             std::function<void()> task;
             {
@@ -98,7 +99,7 @@ void invokeVoid(Function function) {
 
 extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* directory) {
     return invoke([=] {
-        std::fprintf(stderr, "FaceHAL algorithm open tid=%ld\n", syscall(SYS_gettid));
+        FACEHAL_TRACE("FaceHAL algorithm open tid=%ld\n", syscall(SYS_gettid));
         return facehal_algorithm_open_impl(directory);
     }, static_cast<FacehalAlgorithm*>(nullptr));
 }
@@ -110,7 +111,7 @@ extern "C" int32_t facehal_algorithm_process_nv21(
         int32_t height, int32_t stride, int32_t action, int32_t config) {
     return invoke([=] {
         static int logged = 0;
-        if (logged++ < 3) std::fprintf(stderr, "FaceHAL algorithm process tid=%ld\n", syscall(SYS_gettid));
+        if (logged++ < 3) FACEHAL_TRACE("FaceHAL algorithm process tid=%ld\n", syscall(SYS_gettid));
         return facehal_algorithm_process_nv21_impl(algorithm, image, size, width, height, stride, action, config);
     }, int32_t{FACEHAL_ALGORITHM_ERROR_INITIALIZATION});
 }

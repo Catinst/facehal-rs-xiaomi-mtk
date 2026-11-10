@@ -68,7 +68,7 @@ impl IFace for FaceService {
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_err()
         {
-            eprintln!("FaceHAL createSession: previous session is still active");
+            facehal_trace!("FaceHAL createSession: previous session is still active");
             return Err(StatusCode::ALREADY_EXISTS.into());
         }
         let session = match FaceSession::new(

@@ -1,3 +1,4 @@
+#include "FacehalLog.h"
 #include "CameraBridge.h"
 
 #include <android/native_window.h>
@@ -524,12 +525,11 @@ bool initialize(
     }
     if (windowMode == kWindowModeVendorHandle) {
         const auto* nativeHandle = static_cast<const NativeHandleHeader*>(vendorWindowHandle);
-        std::fprintf(
-                stderr, "FaceHAL camera worker v2: vendor native handle ready fds=%d ints=%d\n",
+        FACEHAL_TRACE("FaceHAL camera worker v2: vendor native handle ready fds=%d ints=%d\n",
                 nativeHandle->numFds, nativeHandle->numInts);
         cameraOutputWindow = vendorWindowHandle;
     } else {
-        std::fprintf(stderr, "FaceHAL camera worker v2: using standard ANativeWindow ABI\n");
+        FACEHAL_TRACE("FaceHAL camera worker v2: using standard ANativeWindow ABI\n");
     }
 #endif
 #if defined(FACEHAL_VENDOR_CAMERA_NDK) && defined(__ANDROID_VNDK__)
@@ -722,9 +722,7 @@ int32_t nextLocalNv21(
                     std::cv_status::timeout) {
                     if (!camera->frameTimeoutLogged) {
                         camera->frameTimeoutLogged = true;
-                        std::fprintf(
-                                stderr,
-                                "FaceHAL camera worker v2: ImageReader produced no frame\n");
+                        FACEHAL_TRACE("FaceHAL camera worker v2: ImageReader produced no frame\n");
                         std::fflush(stderr);
                     }
                     return kTimeout;
@@ -748,7 +746,7 @@ int32_t nextLocalNv21(
                 image.get(), output, capacity, camera->outputWidth, camera->outputHeight);
         if (result > 0 && !camera->firstFrameLogged) {
             camera->firstFrameLogged = true;
-            std::fprintf(stderr, "FaceHAL camera worker v2: first NV21 frame acquired\n");
+            FACEHAL_TRACE("FaceHAL camera worker v2: first NV21 frame acquired\n");
             std::fflush(stderr);
         }
         return result;
@@ -817,17 +815,13 @@ int32_t probeCandidateNv21(
         int32_t maximum = 0;
         int32_t average = 0;
         if (hasUsableLuma(output, width, height, &minimum, &maximum, &average)) {
-            std::fprintf(
-                    stderr,
-                    "FaceHAL camera worker v2: candidate frame usable index=%d luma=%d..%d "
+            FACEHAL_TRACE("FaceHAL camera worker v2: candidate frame usable index=%d luma=%d..%d "
                     "mean=%d\n",
                     frame + 1, minimum, maximum, average);
             std::fflush(stderr);
             return lastResult;
         }
-        std::fprintf(
-                stderr,
-                "FaceHAL camera worker v2: rejected blank warmup frame index=%d luma=%d..%d "
+        FACEHAL_TRACE("FaceHAL camera worker v2: rejected blank warmup frame index=%d luma=%d..%d "
                 "mean=%d\n",
                 frame + 1, minimum, maximum, average);
         std::fflush(stderr);
@@ -953,8 +947,7 @@ struct FacehalCamera {
             close(socketFd);
             socketFd = -1;
         }
-        std::fprintf(
-                stderr, "FaceHAL camera worker v2: stopped pid=%d forced=%d graceful=%d\n", pid,
+        FACEHAL_TRACE("FaceHAL camera worker v2: stopped pid=%d forced=%d graceful=%d\n", pid,
                 forced ? 1 : 0, graceful ? 1 : 0);
         std::fflush(stderr);
         usleep(100'000);
@@ -997,14 +990,13 @@ extern "C" int32_t facehal_camera_worker_main(
             findFrontCameras(discoveryManager, width, height);
     ACameraManager_delete(discoveryManager);
     if (candidates.empty()) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: no compatible front camera\n");
+        FACEHAL_TRACE("FaceHAL camera worker v2: no compatible front camera\n");
         const WorkerHello hello{kCameraUnavailable, 0, -1};
         (void)sendExact(socketFd, &hello, sizeof(hello));
         _exit(4);
     }
     std::unique_ptr<LocalCamera> camera;
-    std::fprintf(
-            stderr, "FaceHAL camera worker v2: initializing Camera2 candidates=%zu\n",
+    FACEHAL_TRACE("FaceHAL camera worker v2: initializing Camera2 candidates=%zu\n",
             candidates.size());
     std::fflush(stderr);
     for (const CameraSelection& candidate : candidates) {
@@ -1016,9 +1008,7 @@ extern "C" int32_t facehal_camera_worker_main(
         const int32_t alternateTemplate =
                 preferredTemplate == TEMPLATE_RECORD ? TEMPLATE_PREVIEW : TEMPLATE_RECORD;
         for (const int32_t requestTemplate : {preferredTemplate, alternateTemplate}) {
-            std::fprintf(
-                    stderr,
-                    "FaceHAL camera worker v2: trying id=%s capture=%dx%d output=%dx%d "
+            FACEHAL_TRACE("FaceHAL camera worker v2: trying id=%s capture=%dx%d output=%dx%d "
                     "orientation=%d backward=%d mono=%d depth_only=%d xiaomi_role=%d "
                     "score=%lld window=%s template=%d\n",
                     candidate.id.c_str(), candidate.captureWidth, candidate.captureHeight, width,
@@ -1034,9 +1024,7 @@ extern "C" int32_t facehal_camera_worker_main(
                 const int32_t firstFrame = probeCandidateNv21(
                         attempt.get(), static_cast<uint8_t*>(mapping), frameSize, width, height);
                 if (firstFrame != static_cast<int32_t>(frameSize)) {
-                    std::fprintf(
-                            stderr,
-                            "FaceHAL camera worker v2: candidate produced no usable first frame "
+                    FACEHAL_TRACE("FaceHAL camera worker v2: candidate produced no usable first frame "
                             "id=%s result=%d\n",
                             candidate.id.c_str(), firstFrame);
                     continue;
@@ -1063,8 +1051,7 @@ extern "C" int32_t facehal_camera_worker_main(
     }
     const WorkerHello hello{
             0, static_cast<int32_t>(frameSize), camera->sensorOrientation};
-    std::fprintf(
-            stderr, "FaceHAL camera worker v2: Camera2 initialized id=%s capture=%dx%d\n",
+    FACEHAL_TRACE("FaceHAL camera worker v2: Camera2 initialized id=%s capture=%dx%d\n",
             camera->cameraId.c_str(), camera->captureWidth, camera->captureHeight);
     std::fflush(stderr);
     if (!sendExact(socketFd, &hello, sizeof(hello))) {
@@ -1208,9 +1195,7 @@ extern "C" FacehalCamera* facehal_camera_open(int32_t width, int32_t height) {
             (hello.sensorOrientation == 0 || hello.sensorOrientation == 90 ||
              hello.sensorOrientation == 180 || hello.sensorOrientation == 270)) {
             camera->sensorOrientation = hello.sensorOrientation;
-            std::fprintf(
-                    stderr,
-                    "FaceHAL camera worker v2: started pid=%d frame=%zu orientation=%d "
+            FACEHAL_TRACE("FaceHAL camera worker v2: started pid=%d frame=%zu orientation=%d "
                     "window=%s\n",
                     camera->workerPid, camera->frameSize, camera->sensorOrientation,
                     windowMode == kWindowModeVendorHandle ? "native-handle" : "standard");
@@ -1257,7 +1242,7 @@ extern "C" int32_t facehal_camera_next_nv21(
     }
     int32_t result = kCameraUnavailable;
     if (!receiveExact(camera->socketFd, &result, sizeof(result), timeoutMs + 1'000)) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: response transport timed out\n");
+        FACEHAL_TRACE("FaceHAL camera worker v2: response transport timed out\n");
         std::fflush(stderr);
         camera->stopWorker(false);
         return kCameraUnavailable;

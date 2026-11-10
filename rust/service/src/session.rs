@@ -129,7 +129,7 @@ impl AlgorithmCache {
         }
 
         if let Some(previous) = cached.take() {
-            eprintln!(
+            facehal_trace!(
                 "FaceHAL: releasing cached algorithm for user={} before switching to user={user_id}",
                 previous.user_id
             );
@@ -142,7 +142,7 @@ impl AlgorithmCache {
                     user_id,
                     instance: instance.clone(),
                 });
-                eprintln!(
+                facehal_trace!(
                     "FaceHAL session user={user_id}: algorithm initialized and cached at {}",
                     directory.display()
                 );
@@ -287,7 +287,7 @@ impl FaceSession {
         preview_surface: Option<Surface>,
     ) -> binder::Result<Strong<dyn ICancellationSignal>> {
         self.ensure_open()?;
-        eprintln!("FaceHAL enroll: request features={features:?}");
+        facehal_trace!("FaceHAL enroll: request features={features:?}");
         let features_supported = features.iter().all(|feature| {
             matches!(
                 *feature,
@@ -327,7 +327,7 @@ impl FaceSession {
                 }
                 let before = match algorithm.enumerate() {
                     Ok(ids) => {
-                        eprintln!("FaceHAL enroll: existing templates={ids:?}");
+                        facehal_trace!("FaceHAL enroll: existing templates={ids:?}");
                         ids
                     }
                     Err(error) => {
@@ -347,7 +347,7 @@ impl FaceSession {
                 }
                 let mut camera = match open_camera_with_retry("enroll") {
                     Ok(camera) => {
-                        eprintln!(
+                        facehal_trace!(
                             "FaceHAL enroll: camera opened {}x{} orientation={}",
                             CAMERA_WIDTH,
                             CAMERA_HEIGHT,
@@ -386,14 +386,14 @@ impl FaceSession {
                         Err(CameraError::Timeout) => {
                             timeout_count += 1;
                             if timeout_count == 1 || timeout_count % 10 == 0 {
-                                eprintln!("FaceHAL enroll: camera timeout count={timeout_count}");
+                                facehal_trace!("FaceHAL enroll: camera timeout count={timeout_count}");
                             }
                             continue;
                         }
                         Err(CameraError::BadFrame) => {
                             bad_frame_count += 1;
                             if bad_frame_count == 1 || bad_frame_count % 10 == 0 {
-                                eprintln!("FaceHAL enroll: bad frame count={bad_frame_count}");
+                                facehal_trace!("FaceHAL enroll: bad frame count={bad_frame_count}");
                             }
                             continue;
                         }
@@ -423,7 +423,7 @@ impl FaceSession {
                     };
                     let status = algorithm.process_nv21(&frame, CAMERA_WIDTH, CAMERA_HEIGHT, action);
                     if last_status != Some(status) || frame_count == 1 || frame_count % 30 == 0 {
-                        eprintln!(
+                        facehal_trace!(
                             "FaceHAL enroll: frame={frame_count} action={action} status={status} acquired={:?} remaining={progress_remaining}",
                             map_acquired(status)
                         );
@@ -472,7 +472,7 @@ impl FaceSession {
                             progress_remaining -= 1;
                             send_standard_enrollment_step(&callback, enrollment_id, progress_remaining);
                             next_confirmation_at = Instant::now() + ENROLLMENT_SAMPLE_INTERVAL;
-                            eprintln!("FaceHAL enroll: candidate id={enrollment_id} slot={slot}; starting live confirmation");
+                            facehal_trace!("FaceHAL enroll: candidate id={enrollment_id} slot={slot}; starting live confirmation");
                         }
                         // Do not send a successful EnrollmentFrame here. Android converts it
                         // to onEnrollmentHelp, which resets this MIUI ring animation.
@@ -486,7 +486,7 @@ impl FaceSession {
                             if progress_remaining > 0 {
                                 send_standard_enrollment_step(&callback, enrollment_id, progress_remaining);
                             }
-                            eprintln!("FaceHAL enroll: confirmed id={enrollment_id} slot={slot} remaining={progress_remaining}");
+                            facehal_trace!("FaceHAL enroll: confirmed id={enrollment_id} slot={slot} remaining={progress_remaining}");
                             if progress_remaining == 0 {
                                 if authenticator_id.rotate(true).is_err() {
                                     let _ = algorithm.remove(enrollment_id);
@@ -501,7 +501,7 @@ impl FaceSession {
                                     drop(camera);
                                     drop(preview);
                                     drop(_guard);
-                                    eprintln!("FaceHAL enroll: completed id={enrollment_id} frames={frame_count} after live confirmation");
+                                    facehal_trace!("FaceHAL enroll: completed id={enrollment_id} frames={frame_count} after live confirmation");
                                     send_standard_enrollment_step(&callback, enrollment_id, 0);
                                 } else {
                                     let _ = algorithm.remove(enrollment_id);
@@ -530,7 +530,7 @@ impl FaceSession {
                         next_acquired_at = Instant::now() + ENROLLMENT_ACQUIRED_INTERVAL;
                     }
                 }
-                eprintln!(
+                facehal_trace!(
                     "FaceHAL enroll: timed out frames={frame_count} camera_timeouts={timeout_count} bad_frames={bad_frame_count} last_status={last_status:?}"
                 );
                 if let Some((candidate_id, _)) = candidate {
@@ -585,11 +585,11 @@ impl FaceSession {
                 }
                 let enrollment_slots = match algorithm.slots() {
                     Ok(slots) if slots.iter().any(Option::is_some) => {
-                        eprintln!("FaceHAL auth: enrollment slots={slots:?}");
+                        facehal_trace!("FaceHAL auth: enrollment slots={slots:?}");
                         slots
                     }
                     Ok(_) => {
-                        eprintln!("FaceHAL auth: no enrolled templates");
+                        facehal_trace!("FaceHAL auth: no enrolled templates");
                         if begin_terminal(&cancellation, &callback, &closed) {
                             let _ = callback.onAuthenticationFailed();
                         }
@@ -603,7 +603,7 @@ impl FaceSession {
                 };
                 let mut camera = match open_camera_with_retry("auth") {
                     Ok(camera) => {
-                        eprintln!(
+                        facehal_trace!(
                             "FaceHAL auth: camera opened {}x{} orientation={}",
                             CAMERA_WIDTH,
                             CAMERA_HEIGHT,
@@ -629,11 +629,11 @@ impl FaceSession {
                     let frame = match camera.next_frame(FRAME_TIMEOUT_MS) {
                         Ok(frame) => frame,
                         Err(CameraError::Timeout) => {
-                            eprintln!("FaceHAL auth: camera frame timeout");
+                            facehal_trace!("FaceHAL auth: camera frame timeout");
                             continue;
                         }
                         Err(CameraError::BadFrame) => {
-                            eprintln!("FaceHAL auth: bad camera frame");
+                            facehal_trace!("FaceHAL auth: bad camera frame");
                             continue;
                         }
                         Err(CameraError::Unavailable) => {
@@ -679,7 +679,7 @@ impl FaceSession {
                             ACTION_AUTHENTICATE,
                         );
                         if last_status != Some(status) || frame_count == 1 {
-                            eprintln!(
+                            facehal_trace!(
                                 "FaceHAL auth: frame={frame_count} slot={slot} id={enrollment_id} status={status} acquired={:?}",
                                 map_acquired(status)
                             );
@@ -700,7 +700,7 @@ impl FaceSession {
                             if !closed.load(Ordering::Acquire) {
                                 drop(camera);
                                 drop(_guard);
-                                eprintln!(
+                                facehal_trace!(
                                     "FaceHAL auth: completed id={enrollment_id} frames={frame_count} camera_released=true"
                                 );
                                 let _ = callback.onAuthenticationSucceeded(enrollment_id, &hat);
@@ -753,7 +753,7 @@ impl FaceSession {
                     drop(_guard);
                     record_authentication_failure(&cancellation, &callback, &closed, &lockout);
                 } else {
-                    eprintln!("FaceHAL auth: timed out frames={frame_count}");
+                    facehal_trace!("FaceHAL auth: timed out frames={frame_count}");
                     drop(camera);
                     drop(_guard);
                     notify_error(&cancellation, &callback, &closed, Error::TIMEOUT, 0);
@@ -1017,7 +1017,7 @@ impl ISession for FaceSession {
                     .unwrap();
                 completion = next;
                 if result.timed_out() {
-                    eprintln!("FaceHAL session: operation did not stop before close timeout");
+                    facehal_trace!("FaceHAL session: operation did not stop before close timeout");
                     break;
                 }
             }
@@ -1305,7 +1305,7 @@ fn send_standard_enrollment_step(
         return;
     }
     let result = callback.onEnrollmentProgress(enrollment_id, remaining);
-    eprintln!(
+    facehal_trace!(
         "FaceHAL enroll: standard progress id={enrollment_id} remaining={remaining} transport_ok={}",
         result.is_ok(),
     );

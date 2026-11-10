@@ -1,3 +1,4 @@
+#include "../../../../native/FacehalLog.h"
 #include <dlfcn.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -97,7 +98,7 @@ int32_t AServiceManager_addService(AIBinder* binder, const char* instance) {
     const char* mode = getenv("FACEHAL_BINDER_MODE");
     bool system_test = mode != NULL && strcmp(mode, "system-test") == 0;
     int is_declared = declared != NULL ? declared(instance) : -1;
-    fprintf(stderr, "FaceHAL register: instance=%s declared=%d mode=%s\n",
+    FACEHAL_TRACE("FaceHAL register: instance=%s declared=%d mode=%s\n",
             instance, is_declared, system_test ? "system-test" : "vintf");
     // Only the top-level IFace object is downgraded, and only by explicit test opt-in.
     // Session and callback objects retain their generated VINTF contracts.
@@ -108,10 +109,14 @@ int32_t AServiceManager_addService(AIBinder* binder, const char* instance) {
         downgrade(binder);
     }
     int32_t exception = function(binder, instance);
-    fprintf(stderr, "FaceHAL register: raw=%d hex=0x%08x exception=%s\n",
+    if (exception != 0) {
+        fprintf(stderr, "FaceHAL registration error: instance=%s raw=%d declared=%d exception=%s\n",
+                instance, exception, is_declared, exception_name(exception));
+    }
+    FACEHAL_TRACE("FaceHAL register: raw=%d hex=0x%08x exception=%s\n",
             exception, (uint32_t)exception, exception_name(exception));
     if (exception == -3 && is_declared == 0 && !system_test) {
-        fprintf(stderr, "FaceHAL register: install the device VINTF IFace/default v4 fragment; a compatibility matrix is insufficient.\n");
+        FACEHAL_TRACE("FaceHAL register: install the device VINTF IFace/default v4 fragment; a compatibility matrix is insufficient.\n");
     }
     return exception;
 }
