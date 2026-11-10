@@ -1,8 +1,8 @@
 # facehal-rs-xiaomi-mtk
 
-基于 [LazyBonesLZY/facehal-rs](https://github.com/LazyBonesLZY/facehal-rs) 的真实 fork，聚焦 **小米/Redmi MTK 设备在新系统、Treble/GSI 环境下的人脸 HAL 兼容**。上游署名、Apache-2.0 源码许可与第三方归属保留。
+基于 [LazyBonesLZY/facehal-rs](https://github.com/LazyBonesLZY/facehal-rs) 的 fork，聚焦 **小米/Redmi MTK 设备在ColorOS 17 环境下的人脸 HAL 兼容**。
 
-**目前只明确实测 Redmi K50（rubens/MT6895）＋ColorOS17 SDK37＋vendor/VNDK31：人脸录入、完成页和锁屏解锁。其它小米 MTK 机型是适配目标，尚未逐机型验证；不是“全部 MTK 已通用”。**
+**目前只实测 Redmi K50（rubens/MT6895）＋ColorOS17.0.1 Android 17 ＋ vendor/VNDK31：人脸录入、完成页和锁屏解锁。其它小米 MTK 机型是适配目标，尚未逐机型验证；不是“全部 MTK 已通用”。**
 
 ## 这个 fork 改了什么
 
@@ -26,7 +26,7 @@
                                 → 设备原 vendor camera provider → 原内核驱动
 ```
 
-本项目不是替换 K50 摄像头驱动，也不是重写/训练识别模型。返回 WEAK/RGB 是能力声明，不等于已完成强度认证；未把它升级成硬件强认证或宣称密码学信任链已验证。
+本项目不是替换摄像头驱动，也不是重写/训练识别模型。返回 WEAK/RGB 是能力声明，不等于已完成强度认证；未把它升级成硬件强认证或宣称密码学信任链已验证。
 
 ## Linux 构建
 
