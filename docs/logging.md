@@ -2,7 +2,7 @@
 
 当前测试模块的逐帧信息主要来自HAL二进制（Rust及native C/C++）；KSU脚本负责将stderr/stdout接到模块文件，同时手动Action/探测器会回显进程和接口结果。
 
-仓库默认发布构建现在为 `FACEHAL_VERBOSE_LOGS=0`：项目例行/逐帧诊断在编译时关闭，不再格式化这些日志。注册失败、算法fatal、库缺失等错误信息保留；第三方算法库自己的错误输出不由本项目开关改写。显式 `FACEHAL_VERBOSE_LOGS=1` 可编译诊断版本。
+仓库默认发布构建为 `FACEHAL_VERBOSE_LOGS=0`：项目例行/逐帧诊断在编译时关闭。项目 Rust/native 错误直接进入 Android logcat，不通过运行日志文件；默认标签 `FaceHAL`，个人构建可设置 `FACEHAL_LOG_TAG=SnowColorOSFaceHal`。第三方算法库自身stderr行为不改写；最终项目错误代码仍由logcat报告。显式 `FACEHAL_VERBOSE_LOGS=1` 可编译诊断版本，诊断也进入logcat。
 
 ```sh
 FACEHAL_VERBOSE_LOGS=0 scripts/build-production.sh
