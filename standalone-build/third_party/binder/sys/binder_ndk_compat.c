@@ -43,7 +43,7 @@ static void* binder_ndk_symbol(const char* name) {
 }
 
 static void missing_symbol(const char* name) {
-    fprintf(stderr, "facehal: missing baseline libbinder_ndk symbol: %s\n", name);
+    FACEHAL_ERROR( "facehal: missing baseline libbinder_ndk symbol: %s\n", name);
     abort();
 }
 
@@ -110,7 +110,7 @@ int32_t AServiceManager_addService(AIBinder* binder, const char* instance) {
     }
     int32_t exception = function(binder, instance);
     if (exception != 0) {
-        fprintf(stderr, "FaceHAL registration error: instance=%s raw=%d declared=%d exception=%s\n",
+        FACEHAL_ERROR( "FaceHAL registration error: instance=%s raw=%d declared=%d exception=%s\n",
                 instance, exception, is_declared, exception_name(exception));
     }
     FACEHAL_TRACE("FaceHAL register: raw=%d hex=0x%08x exception=%s\n",

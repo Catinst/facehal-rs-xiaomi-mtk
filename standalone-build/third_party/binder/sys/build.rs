@@ -31,6 +31,9 @@ fn main() {
     println!("cargo::rerun-if-env-changed=FACEHAL_VERBOSE_LOGS");
     let verbose = env::var("FACEHAL_VERBOSE_LOGS").unwrap_or_else(|_| "0".into());
     assert!(verbose == "0" || verbose == "1", "invalid FACEHAL_VERBOSE_LOGS");
+    println!("cargo::rerun-if-env-changed=FACEHAL_LOG_TAG");
+    let tag = env::var("FACEHAL_LOG_TAG").unwrap_or_else(|_| "FaceHAL".into());
+    assert!(!tag.is_empty() && tag.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c)), "invalid FACEHAL_LOG_TAG");
     println!("cargo::rerun-if-env-changed=FACEHAL_ANDROID_API");
     println!("cargo::rerun-if-env-changed=BINDER_NDK_LIB_DIR");
     println!("cargo::rerun-if-env-changed=BINDER_PLATFORM_HEADERS");
@@ -108,6 +111,7 @@ fn main() {
         let compile = Command::new(&clang)
             .arg("-fPIC")
             .arg(format!("-DFACEHAL_VERBOSE_LOGS={verbose}"))
+            .arg(format!("-DFACEHAL_LOG_TAG=\"{tag}\""))
             .arg("-fno-stack-protector")
             .arg(format!("-D__ANDROID_MIN_SDK_VERSION__={api}"))
             .arg("-c")

@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -25,7 +26,7 @@ static binder_status_t transact(AIBinder *binder, transaction_code_t code,
     FACEHAL_TRACE("FaceVirtualBridge transaction=%u\n", code);
     FACEHAL_ANDROID_TRACE(ANDROID_LOG_INFO, "FaceVirtualBridge", "transaction=%u", code);
     if (code != 23) {
-        fprintf(stderr, "FaceVirtualBridge: unsupported control transaction=%u\n", code);
+        FACEHAL_ERROR( "FaceVirtualBridge: unsupported control transaction=%u\n", code);
         return STATUS_UNKNOWN_TRANSACTION;
     }
     if (!bridge) return STATUS_DEAD_OBJECT;
@@ -49,7 +50,7 @@ int main(void) {
     const char *target = "android.hardware.biometrics.face.IFace/default";
     const char *name = "android.hardware.biometrics.face.virtualhal.IVirtualHal/virtual";
     void *lib = dlopen("libbinder_ndk.so", RTLD_NOW | RTLD_LOCAL);
-    if (!lib) { fprintf(stderr, "binder dlopen error: %s\n", dlerror()); return 2; }
+    if (!lib) { FACEHAL_ERROR( "binder dlopen error: %s\n", dlerror()); return 2; }
     check_fn check = (check_fn)dlsym(lib, "AServiceManager_checkService");
     add_fn add = (add_fn)dlsym(lib, "AServiceManager_addService");
     pool_fn pool = (pool_fn)dlsym(lib, "ABinderProcess_setThreadPoolMaxThreadCount");
@@ -61,8 +62,23 @@ int main(void) {
         FACEHAL_TRACE("FaceVirtualBridge: existing virtual service left untouched\n");
         return 4;
     }
-    struct Bridge bridge = { .face = check(target), .check = check, .mutex = PTHREAD_MUTEX_INITIALIZER };
-    if (!bridge.face) { fprintf(stderr, "FaceVirtualBridge: real IFace/default absent\n"); return 5; }
+    long wait_seconds = 30;
+    const char *wait_value = getenv("FACEHAL_BRIDGE_WAIT_SECONDS");
+    if (wait_value) {
+        char *end = NULL;
+        wait_seconds = strtol(wait_value, &end, 10);
+        if (!end || end == wait_value || *end || wait_seconds < 0 || wait_seconds > 120) {
+            FACEHAL_ERROR("Invalid FACEHAL_BRIDGE_WAIT_SECONDS\n");
+            return 8;
+        }
+    }
+    AIBinder *face = check(target);
+    for (long tick = 0; !face && tick < wait_seconds * 10; ++tick) {
+        usleep(100000);
+        face = check(target);
+    }
+    struct Bridge bridge = { .face = face, .check = check, .mutex = PTHREAD_MUTEX_INITIALIZER };
+    if (!bridge.face) { FACEHAL_ERROR("FaceVirtualBridge: real IFace/default absent after wait\n"); return 5; }
     AIBinder_Class *cls = AIBinder_Class_define(
         "android.hardware.biometrics.face.virtualhal.IVirtualHal", create, destroy, transact);
     AIBinder *binder = cls ? AIBinder_new(cls, &bridge) : NULL;
@@ -73,7 +89,7 @@ int main(void) {
     FACEHAL_TRACE("FaceVirtualBridge addService raw=%d pid=%d exception=%s\n", exception, getpid(),
             exception == 0 ? "EX_NONE" : "EX_ERROR");
     if (exception != 0) {
-        fprintf(stderr, "FaceVirtualBridge registration error raw=%d\n", exception);
+        FACEHAL_ERROR( "FaceVirtualBridge registration error raw=%d\n", exception);
         AIBinder_decStrong(binder);
         AIBinder_decStrong(bridge.face);
         return 7;

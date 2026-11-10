@@ -1,12 +1,17 @@
-// Project routine diagnostics are compile-time opt-in; errors keep eprintln!.
+macro_rules! eprintln {
+    ($($arguments:tt)*) => { crate::logging::error(format_args!($($arguments)*)) };
+}
+
+// Project routine diagnostics are compile-time opt-in.
 macro_rules! facehal_trace {
     ($($arguments:tt)*) => {{
         if matches!(option_env!("FACEHAL_VERBOSE_LOGS"), Some("1")) {
-            std::eprintln!($($arguments)*);
+            crate::logging::trace(format_args!($($arguments)*));
         }
     }};
 }
 
+mod logging;
 mod algorithm;
 mod authenticator;
 mod camera;

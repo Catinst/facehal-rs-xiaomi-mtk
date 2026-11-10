@@ -84,7 +84,7 @@ template<class Function, class Result>
 Result invoke(Function function, Result failure) {
     try { return owner().call(std::move(function)); }
     catch (const std::exception& error) {
-        std::fprintf(stderr, "FaceHAL algorithm dispatch error: %s\n", error.what());
+        FACEHAL_ERROR( "FaceHAL algorithm dispatch error: %s\n", error.what());
         return failure;
     }
 }
@@ -92,7 +92,7 @@ template<class Function>
 void invokeVoid(Function function) {
     try { owner().call(std::move(function)); }
     catch (const std::exception& error) {
-        std::fprintf(stderr, "FaceHAL algorithm dispatch error: %s\n", error.what());
+        FACEHAL_ERROR( "FaceHAL algorithm dispatch error: %s\n", error.what());
     }
 }
 }

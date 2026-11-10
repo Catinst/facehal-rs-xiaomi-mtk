@@ -481,7 +481,7 @@ bool initialize(
 #endif
     camera->manager = ACameraManager_create();
     if (camera->manager == nullptr) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: ACameraManager_create failed\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: ACameraManager_create failed\n");
         return false;
     }
     camera->sensorOrientation = selection.sensorOrientation;
@@ -489,17 +489,17 @@ bool initialize(
                          AIMAGE_FORMAT_YUV_420_888, 4,
                          &camera->reader) != AMEDIA_OK ||
         camera->reader == nullptr) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: AImageReader_new failed\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: AImageReader_new failed\n");
         return false;
     }
     AImageReader_ImageListener imageListener{camera->callbacks.get(), onImageAvailable};
     if (AImageReader_setImageListener(camera->reader, &imageListener) != AMEDIA_OK) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: AImageReader_setImageListener failed\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: AImageReader_setImageListener failed\n");
         return false;
     }
     if (AImageReader_getWindow(camera->reader, &camera->window) != AMEDIA_OK ||
         camera->window == nullptr) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: AImageReader_getWindow failed\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: AImageReader_getWindow failed\n");
         return false;
     }
     ANativeWindow_acquire(camera->window);
@@ -517,8 +517,7 @@ bool initialize(
 #endif
     if (windowMode == kWindowModeVendorHandle &&
         (nativeHandleStatus != AMEDIA_OK || !validVendorWindowHandle(vendorWindowHandle))) {
-        std::fprintf(
-                stderr,
+        FACEHAL_ERROR(
                 "FaceHAL camera worker v2: vendor ImageReader native handle unavailable status=%d\n",
                 nativeHandleStatus);
         return false;
@@ -542,7 +541,7 @@ bool initialize(
     if (ACameraManager_openCamera(camera->manager, selection.id.c_str(), &deviceCallbacks,
                                   &camera->device) != ACAMERA_OK ||
         camera->device == nullptr) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: openCamera failed id=%s\n",
+        FACEHAL_ERROR( "FaceHAL camera worker v2: openCamera failed id=%s\n",
                      selection.id.c_str());
         return false;
     }
@@ -556,29 +555,29 @@ bool initialize(
                 &camera->request) !=
                 ACAMERA_OK ||
         ACaptureRequest_addTarget(camera->request, camera->target) != ACAMERA_OK) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: capture request setup failed\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: capture request setup failed\n");
         return false;
     }
     const uint8_t controlMode = ACAMERA_CONTROL_MODE_AUTO;
     if (ACaptureRequest_setEntry_u8(
                 camera->request, ACAMERA_CONTROL_MODE, 1, &controlMode) != ACAMERA_OK) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: control auto unavailable\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: control auto unavailable\n");
     }
     const uint8_t exposureMode = ACAMERA_CONTROL_AE_MODE_ON;
     if (ACaptureRequest_setEntry_u8(
                 camera->request, ACAMERA_CONTROL_AE_MODE, 1, &exposureMode) != ACAMERA_OK) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: auto exposure unavailable\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: auto exposure unavailable\n");
     }
     const uint8_t whiteBalanceMode = ACAMERA_CONTROL_AWB_MODE_AUTO;
     if (ACaptureRequest_setEntry_u8(
                 camera->request, ACAMERA_CONTROL_AWB_MODE, 1, &whiteBalanceMode) != ACAMERA_OK) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: auto white balance unavailable\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: auto white balance unavailable\n");
     }
     if (selection.supportsContinuousPictureAf) {
         const uint8_t autofocusMode = ACAMERA_CONTROL_AF_MODE_CONTINUOUS_PICTURE;
         if (ACaptureRequest_setEntry_u8(camera->request, ACAMERA_CONTROL_AF_MODE, 1,
                                         &autofocusMode) != ACAMERA_OK) {
-            std::fprintf(stderr, "FaceHAL camera worker v2: continuous autofocus unavailable\n");
+            FACEHAL_ERROR( "FaceHAL camera worker v2: continuous autofocus unavailable\n");
         }
     }
     ACameraCaptureSession_stateCallbacks sessionCallbacks{
@@ -586,7 +585,7 @@ bool initialize(
     if (ACameraDevice_createCaptureSession(camera->device, camera->outputs, &sessionCallbacks,
                                            &camera->session) != ACAMERA_OK ||
         camera->session == nullptr) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: capture session setup failed\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: capture session setup failed\n");
         return false;
     }
     int sequenceId = 0;
@@ -594,7 +593,7 @@ bool initialize(
     const camera_status_t repeatingStatus = ACameraCaptureSession_setRepeatingRequest(
             camera->session, nullptr, 1, &request, &sequenceId);
     if (repeatingStatus != ACAMERA_OK) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: repeating request failed status=%d\n",
+        FACEHAL_ERROR( "FaceHAL camera worker v2: repeating request failed status=%d\n",
                      repeatingStatus);
         return false;
     }
@@ -1032,8 +1031,7 @@ extern "C" int32_t facehal_camera_worker_main(
                 camera = std::move(attempt);
                 break;
             }
-            std::fprintf(
-                    stderr,
+            FACEHAL_ERROR(
                     "FaceHAL camera worker v2: attempt failed id=%s capture=%dx%d "
                     "window=%s template=%d\n",
                     candidate.id.c_str(), candidate.captureWidth, candidate.captureHeight,
@@ -1202,8 +1200,7 @@ extern "C" FacehalCamera* facehal_camera_open(int32_t width, int32_t height) {
             std::fflush(stderr);
             return camera.release();
         }
-        std::fprintf(
-                stderr, "FaceHAL camera worker v2: startup failed window=%s\n",
+        FACEHAL_ERROR( "FaceHAL camera worker v2: startup failed window=%s\n",
                 windowMode == kWindowModeVendorHandle ? "native-handle" : "standard");
         camera->stopWorker(false);
     }
@@ -1235,7 +1232,7 @@ extern "C" int32_t facehal_camera_next_nv21(
     }
     const WorkerRequest request{kWorkerNextFrame, timeoutMs};
     if (!sendExact(camera->socketFd, &request, sizeof(request))) {
-        std::fprintf(stderr, "FaceHAL camera worker v2: request transport failed\n");
+        FACEHAL_ERROR( "FaceHAL camera worker v2: request transport failed\n");
         std::fflush(stderr);
         camera->stopWorker(false);
         return kCameraUnavailable;

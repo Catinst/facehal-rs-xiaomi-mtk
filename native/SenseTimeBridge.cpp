@@ -346,7 +346,7 @@ extern "C" FacehalAlgorithm* facehal_algorithm_open(const char* templateDirector
         status = FACEHAL_ALGORITHM_ERROR_INITIALIZATION;
     }
     if (status != 0 || algorithm->engine == nullptr) {
-        std::fprintf(stderr, "FaceHAL algorithm: initialization failed status=%d engine=%p\n", status,
+        FACEHAL_ERROR( "FaceHAL algorithm: initialization failed status=%d engine=%p\n", status,
                      algorithm->engine);
         std::fflush(stderr);
         FACEHAL_ANDROID_TRACE(ANDROID_LOG_ERROR, kTag, "algorithm initialization failed: %d",

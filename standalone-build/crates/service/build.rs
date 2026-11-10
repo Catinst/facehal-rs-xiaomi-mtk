@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    for variable in ["FACEHAL_ROOT", "ANDROID_SYSTEM_LIB64", "ANDROID_VENDOR_LIB64", "FACEHAL_VERBOSE_LOGS"] {
+    for variable in ["FACEHAL_ROOT", "ANDROID_SYSTEM_LIB64", "ANDROID_VENDOR_LIB64", "FACEHAL_VERBOSE_LOGS", "FACEHAL_LOG_TAG"] {
         println!("cargo::rerun-if-env-changed={variable}");
     }
     let root = PathBuf::from(env::var("FACEHAL_ROOT").expect("FACEHAL_ROOT is required"));
